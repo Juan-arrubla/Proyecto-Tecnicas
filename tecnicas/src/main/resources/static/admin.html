@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administración | Conexión Urrao</title>
+  <meta name="robots" content="noindex">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/png" href="images/logo-icono.png">
+  <!-- styles.css trae los colores, las fuentes y los botones; admin.css lo propio de esta página -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin">
+
+  <!-- ===================== ENCABEZADO ===================== -->
+  <header class="admin-header">
+    <div class="wrap admin-header-inner">
+      <a class="logo" href="index.html">
+        <img src="images/logo-blanco.png" alt="Conexión Urrao, volver a la página principal" width="104" height="50">
+      </a>
+      <p class="admin-title">Panel de administración</p>
+      <a class="btn btn-ghost-dark btn-sm" href="index.html">Ver página pública</a>
+    </div>
+
+    <!-- Una pestaña por tabla de la base de datos. Los botones los crea admin.js -->
+    <div class="wrap">
+      <div class="admin-tabs" id="admin-tabs" role="tablist" aria-label="Tablas de la base de datos"></div>
+    </div>
+  </header>
+
+  <!-- ===================== CONTENIDO ===================== -->
+  <main class="admin-main">
+    <div class="wrap">
+
+      <!-- Aviso cuando el backend no responde y se trabaja con datos de ejemplo -->
+      <div class="admin-banner" id="demo-banner" role="status" hidden>
+        <div>
+          <strong>Modo demostración</strong>
+          <p id="demo-text"></p>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-retry">Reintentar conexión</button>
+      </div>
+
+      <section class="admin-card" id="admin-panel" role="tabpanel" aria-labelledby="resource-title">
+        <div class="admin-toolbar">
+          <div>
+            <h1 id="resource-title">Cargando...</h1>
+            <p class="resource-count" id="resource-count"></p>
+          </div>
+          <div class="toolbar-actions">
+            <label class="search">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <span class="visually-hidden">Buscar en la tabla</span>
+              <input type="search" id="search" placeholder="Buscar" autocomplete="off">
+            </label>
+            <button class="btn btn-primary" type="button" id="btn-new">Nuevo registro</button>
+          </div>
+        </div>
+
+        <!-- Filtros: solo se ven en la pestaña Suscripciones.
+             Se mandan al backend como ?status=activa&from=2026-11-01&to=2026-11-30 -->
+        <form class="filters" id="filters" novalidate hidden>
+          <div class="filter">
+            <label for="filter-status">Estado</label>
+            <select id="filter-status">
+              <option value="">Todos</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="activa">Activa</option>
+              <option value="suspendida">Suspendida</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div class="filter">
+            <label for="filter-from">Desde</label>
+            <input type="date" id="filter-from">
+          </div>
+          <div class="filter">
+            <label for="filter-to">Hasta</label>
+            <input type="date" id="filter-to">
+          </div>
+          <div class="filter-actions">
+            <button class="btn btn-dark btn-sm" type="submit">Filtrar</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="filter-clear">Quitar filtros</button>
+          </div>
+          <p class="filter-error" id="filter-error" role="alert" hidden></p>
+        </form>
+
+        <!-- El contenedor permite desplazar la tabla de lado en pantallas pequeñas -->
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== INFORMES ===================== -->
+      <section class="admin-card reports" id="reports-panel" role="tabpanel" aria-labelledby="tab-reports" hidden>
+        <div class="admin-toolbar">
+          <div>
+            <h1>Informes</h1>
+            <p class="resource-count">Suscripciones e ingresos por plan. Se calculan con las suscripciones guardadas hoy.</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" id="reports-refresh">Actualizar</button>
+        </div>
+
+        <!-- Cifras principales -->
+        <div class="kpis" id="kpis"></div>
+
+        <!-- Gráfico: suscripciones por plan (barras horizontales, de mayor a menor) -->
+        <div class="report-block">
+          <h2>Suscripciones por plan</h2>
+          <p class="report-note">Cuenta todas las suscripciones del plan, en cualquier estado. Pasa el mouse sobre una barra para ver el detalle.</p>
+          <div class="bars" id="plan-bars"></div>
+        </div>
+
+        <!-- La misma información en tabla (y el ingreso de cada plan) -->
+        <div class="report-block">
+          <h2>Detalle por plan</h2>
+          <p class="report-note">El ingreso mensual suma el precio acordado de las suscripciones activas. Las pendientes, suspendidas y canceladas no pagan.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th scope="col">Plan</th><th scope="col" class="num">Suscripciones</th><th scope="col" class="num">Activas</th><th scope="col" class="num">Ingreso mensual</th></tr>
+              </thead>
+              <tbody id="plan-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <p class="admin-footnote">
+        Este panel usa los endpoints <code>/api/plans</code>, <code>/api/promotions</code>, <code>/api/equipment</code>,
+        <code>/api/customers</code>, <code>/api/subscriptions</code>, <code>/api/equipment-subscriptions</code> y <code>/api/reports/plans</code>. En una página real estaría protegido con usuario y contraseña.
+      </p>
+    </div>
+  </main>
+
+  <!-- ===================== FORMULARIO (crear / editar) ===================== -->
+  <dialog class="admin-dialog" id="form-dialog" aria-labelledby="form-title">
+    <form id="record-form" novalidate>
+      <div class="dialog-head">
+        <h2 id="form-title">Nuevo registro</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <!-- Los campos se crean según la tabla que esté abierta -->
+      <div class="admin-fields" id="form-fields"></div>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Cancelar</button>
+        <button class="btn btn-primary" type="submit" id="btn-save">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ===================== CONFIRMACIÓN ===================== -->
+  <dialog class="admin-dialog admin-dialog-sm" id="confirm-dialog" aria-labelledby="confirm-title">
+    <div class="dialog-head">
+      <h2 id="confirm-title"></h2>
+    </div>
+    <p class="confirm-text" id="confirm-text"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" type="button" data-close>Cancelar</button>
+      <button class="btn btn-danger" type="button" id="btn-confirm">Eliminar</button>
+    </div>
+  </dialog>
+
+  <!-- ===================== EQUIPOS DE UNA SUSCRIPCIÓN ===================== -->
+  <dialog class="admin-dialog" id="equip-dialog" aria-labelledby="equip-title">
+    <div class="dialog-head">
+      <div>
+        <h2 id="equip-title">Equipos de la suscripción</h2>
+        <p class="equip-subtitle" id="equip-subtitle"></p>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Cerrar">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="equip-demo" id="equip-demo" hidden>
+      Modo demostración: el endpoint <code>/api/equipment-subscriptions</code> no respondió. Los cambios no se guardan.
+    </p>
+    <ul class="assigned-list" id="assigned-list"></ul>
+    <p class="assigned-total" id="assigned-total"></p>
+
+    <!-- Asignar un equipo del catálogo -->
+    <form class="assign-form" id="assign-form" novalidate>
+      <label for="assign-select">Asignar un equipo</label>
+      <div class="assign-row">
+        <select id="assign-select"></select>
+        <button class="btn btn-primary" type="submit">Asignar</button>
+      </div>
+      <p class="form-error" id="equip-error" role="alert" hidden></p>
+    </form>
+  </dialog>
+
+  <!-- Mensaje corto que aparece abajo después de guardar o eliminar -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
